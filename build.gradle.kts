@@ -3,20 +3,21 @@ plugins {
     application
 }
 
-group = "org.example"
+group = "com.zuku"
 version = "1.0-SNAPSHOT"
+val mySqlVersion = "8.0.28"
+val koinVersion = "3.1.4"
+val kotestVesrion = "5.8.0"
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    implementation("mysql:mysql-connector-java:8.0.28")
-    implementation("io.insert-koin:koin-core:3.1.4")
-    implementation("io.grpc:grpc-netty:1.62.2")
-    implementation("io.grpc:grpc-stub:1.62.2")
-    implementation("io.grpc:grpc-protobuf:1.62.2")
-
+    implementation("mysql:mysql-connector-java:$mySqlVersion")
+    implementation("io.insert-koin:koin-core:$koinVersion")
+    testImplementation ("io.kotest:kotest-runner-junit5-jvm:$kotestVesrion")
+    implementation("com.google.code.gson:gson:2.10")
     testImplementation(kotlin("test"))
 }
 

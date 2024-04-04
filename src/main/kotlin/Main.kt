@@ -1,9 +1,4 @@
-import data_base.impl.TaskRepository
-import data_base.impl.UserRepository
-import gui.IGui
-import model.Account
-import model.CurrentLoggedUser
-import model.User
+import domain.gui.IGui
 import modules.appModule
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -16,7 +11,5 @@ fun main(args: Array<String>) {
    val koinHolder = object: KoinComponent {
      val app: IGui by inject()
    }
-  koinHolder.app.show()
-
-
+    koinHolder.app.show()
 }
