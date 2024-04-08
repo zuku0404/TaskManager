@@ -1,38 +1,38 @@
 package domain.manager.impl
 
-import model.ActionResult
+import model.ActionResultDescription
 import domain.cypher.IEncryptionService
-import model.Status
-import domain.validator.Validator
 import domain.data_base.IAccountRepository
 import domain.data_base.IUserRepository
 import domain.manager.IAccountManager
-import model.Account
-import model.CurrentLoggedUser
-import model.User
+import domain.validator.Validator
+import model.*
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 
-class AccountManager : IAccountManager, KoinComponent {
-    private val accountRepository: IAccountRepository by inject()
-    private val userRepository: IUserRepository by inject()
-    private val cypher: IEncryptionService by inject()
-    private val currentUser = CurrentLoggedUser.getInstance()
+
+class AccountManager(
+        private val accountRepository: IAccountRepository,
+        private val userRepository: IUserRepository,
+        private val cypher: IEncryptionService
+    ) : IAccountManager, KoinComponent {
+        private val currentUser = CurrentLoggedUser.getInstance()
 
     override fun signIn(login: String, password: String): ActionResult {
         return  accountRepository.findAccountByLogin(login)?.let {
             if (cypher.decrypt(it.password) == password) {
                 val user = userRepository.findUserByLogin(login)
                 currentUser.setUser(user)
-                return ActionResult(Status.SUCCESS)
+                return ActionResult(Status.SUCCESS, ActionResultDescription.SUCCESS.description)
             }
-            else ActionResult(Status.INVALID, "password is incorrect")
-        } ?: ActionResult(Status.INVALID, "login not exist")
+            else ActionResult(Status.INVALID, ActionResultDescription.INCORRECT_PASSWORD.description)
+        } ?: ActionResult(Status.INVALID, ActionResultDescription.LOGIN_NOT_EXIST.description)
     }
 
     override fun signOut(): ActionResult {
-        CurrentLoggedUser.getInstance().setUser(null)
-        return ActionResult(Status.SUCCESS, "logout successful")
+        return CurrentLoggedUser.getInstance().getUser()?.let {
+            CurrentLoggedUser.getInstance().setUser()
+            ActionResult(Status.SUCCESS, ActionResultDescription.SUCCESS.description)
+        } ?: ActionResult(Status.INVALID, ActionResultDescription.NO_USER_LOGGED_IN.description)
     }
 
     override fun signUp(login: String, password: String, firstName: String , lastName:String): ActionResult {
@@ -43,26 +43,57 @@ class AccountManager : IAccountManager, KoinComponent {
             return ActionResult(Status.INVALID, stringBuilder.toString())
         } else {
             accountRepository.findAccountByLogin(login)?.let {
-                return ActionResult(Status.INVALID, "login exist")
+                return ActionResult(Status.INVALID, ActionResultDescription.LOGIN_EXIST.description)
             } ?: run{
                 val encryptPassword = cypher.encrypt(password)
                 if (accountRepository.createAccount(login, encryptPassword)) {
                     val account = accountRepository.findAccountByLogin(login)
                     userRepository.createUser(firstName,lastName, account!!)
-                    return ActionResult(Status.SUCCESS)
+                    return ActionResult(Status.SUCCESS, ActionResultDescription.SUCCESS.description)
                 } else {
-                    return  ActionResult(Status.INVALID, "something gores wrong with create account")
+                    return  ActionResult(Status.INVALID, ActionResultDescription.FAIL_SAVE_CHANGES_DB.description)
                 }
             }
         }
     }
 
-    override fun unregister(userId: Int) : ActionResult {
-        currentUser.getUser()?.let {
-            userRepository.deleteUserById(it.id)
-            currentUser.setUser(null)
-            return ActionResult(Status.SUCCESS)
-        } ?: return ActionResult(Status.INVALID, "you are not signed in")
+    override fun unregister() : ActionResult {
+        return currentUser.getUser()?.let {
+            if (userRepository.deleteUserById(it.id)) {
+                currentUser.setUser()
+                ActionResult(Status.SUCCESS, ActionResultDescription.SUCCESS.description)
+            } else
+                ActionResult(Status.INVALID, ActionResultDescription.FAIL_SAVE_CHANGES_DB.description)
+        } ?: ActionResult(Status.INVALID, ActionResultDescription.NO_USER_LOGGED_IN.description)
+    }
+
+    override fun editUserData(firstName: String?, lastName: String?): ActionResult {
+        return currentUser.getUser()?.let {
+            val editedUser = User(it.id, firstName ?: it.name, lastName ?: it.lastName, it.account)
+            if (userRepository.editUser(editedUser)) {
+                ActionResult(Status.SUCCESS, ActionResultDescription.SUCCESS.description)
+            } else ActionResult(Status.INVALID, ActionResultDescription.FAIL_SAVE_CHANGES_DB.description)
+        } ?: ActionResult(Status.INVALID, ActionResultDescription.NO_USER_LOGGED_IN.description)
+    }
+
+    override fun editPassword(oldPassword: String, newPassword: String): ActionResult {
+        return currentUser.getUser()?.let {
+            if (cypher.decrypt(it.account.password) != oldPassword) {
+                ActionResult(Status.INVALID, ActionResultDescription.INCORRECT_PASSWORD.description)
+            } else {
+                val msg = Validator.passwordValidate(newPassword)
+                if (msg.isEmpty()) {
+                    val account = Account(it.account.id, it.account.login, newPassword)
+                    if (accountRepository.editAccount(account)) {
+                        ActionResult(Status.SUCCESS, ActionResultDescription.SUCCESS.description)
+                    } else {
+                        ActionResult(Status.INVALID, ActionResultDescription.FAIL_SAVE_CHANGES_DB.description)
+                    }
+                } else {
+                    ActionResult(Status.INVALID, msg)
+                }
+            }
+        } ?: ActionResult(Status.INVALID, ActionResultDescription.NO_USER_LOGGED_IN.description)
     }
 
     override fun getUser(userId: Long): User? {
@@ -71,30 +102,5 @@ class AccountManager : IAccountManager, KoinComponent {
 
     override fun getAllUsers(): List<User> {
         return userRepository.findUsers()
-    }
-
-    override fun editUserData(firstName: String?, lastName: String?): ActionResult {
-        val user = currentUser.getUser()!!
-        val editedUser = User(user.id, firstName ?: user.name, lastName ?: user.lastName, user.account)
-        return if (userRepository.editUser(editedUser)) {
-            ActionResult(Status.SUCCESS)
-        } else ActionResult(Status.INVALID, "something gores wrong with save data to db")
-    }
-
-
-    override fun editPassword(oldPassword: String, newPassword: String): ActionResult {
-        return if (cypher.decrypt(currentUser.getUser()!!.account.password) != oldPassword) {
-            ActionResult(Status.INVALID, "old password is incorrect")
-        } else {
-            val msg = Validator.passwordValidate(newPassword)
-            if (msg.isEmpty()) {
-                val user = currentUser.getUser()!!
-                val account = Account(user.account.id, user.account.login, newPassword)
-                accountRepository.editAccount(account)
-                ActionResult(Status.SUCCESS)
-            } else {
-                ActionResult(Status.INVALID, msg)
-            }
-        }
     }
 }

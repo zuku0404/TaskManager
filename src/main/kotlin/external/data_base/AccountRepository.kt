@@ -26,9 +26,6 @@ class AccountRepository : IAccountRepository {
                 val id = resultSet.getLong(1)
                 val log = resultSet.getString(2)
                 val password = resultSet.getString(3)
-                println(id)
-                println(log)
-                println(password)
                 return Account(id, log, password)
             } else return null
         }

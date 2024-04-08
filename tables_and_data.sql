@@ -10,6 +10,7 @@ CREATE TABLE users (
     last_name VARCHAR(50) NOT NULL,
     account_id INT,
     FOREIGN KEY (account_id) REFERENCES accounts(account_id)
+    ON DELETE CASCADE
 )
 
 CREATE TABLE boards (
@@ -29,22 +30,46 @@ CREATE TABLE tasks (
     ON DELETE CASCADE
 )
 
+INSERT INTO accounts (login, password) VALUES
+('john_doe', 'john123_password'),
+('jane_smith', 'smith456_password'),
+('michael_johnson', 'michael789_password'),
+('emily_davis', 'emily456_password'),
+('william_brown', 'brown123_password');
+
+INSERT INTO users (first_name, last_name, account_id) VALUES
+('John', 'Doe', 1),
+('Jane', 'Smith', 2),
+('Michael', 'Johnson', 3),
+('Emily', 'Davis', 4),
+('William', 'Brown', 5);
 
 INSERT INTO boards (name) VALUES
-("Gardening"),
-("Home Maintenance"),
-("Shopping List");
+('Garden'),
+('Housework'),
+('Car'),
+('Grocery shopping'),
+('Home project');
 
-INSERT INTO tasks (title, description, user_id, board_id) VALUES
-     ('Plant new flowers', 'Plant a variety of colorful flowers in the garden', 1, 1),
-    ('Trim bushes', 'Use pruning shears to trim overgrown bushes in the backyard', 2, 1),
-    ('Buy potting soil', 'Purchase potting soil for repotting plants in the garden', 3, 1),
-    ('Pick vegetables', 'Harvest ripe vegetables from the vegetable garden', 4, 1),
-    ('Fix broken fence', 'Repair sections of the backyard fence that are damaged', 1, 2),
-    ('Replace lightbulbs', 'Purchase and replace burnt-out lightbulbs around the house', 2, 2),
-    ('Schedule pest control', 'Call pest control to schedule treatment for ants in the kitchen', 3, 2),
-    ('Clean HVAC filters', 'Purchase new filters and clean HVAC system filters', 4, 2),
-    ('Buy groceries', 'Purchase groceries for the week including fruits, vegetables, and dairy products', 1, 3),
-    ('Get gardening tools', 'Purchase new gardening tools such as shovels and gloves', 2, 3),
-    ('Stock up on cleaning supplies', 'Purchase cleaning supplies such as detergent and sponges', 3, 3),
-    ('Get pet food', 'Buy pet food and treats for the upcoming week', 4, 3);
+INSERT INTO tasks (title, description, user_id, board_id)
+VALUES
+    ('Trim the lawn', 'Trim the lawn in front of the house', 1, 1),
+    ('Plant flowers', 'Plant new flowers in the garden', 2, 1),
+    ('Repair the fence', 'Repair the damaged fence', 3, 1),
+    ('Make compost', 'Prepare compost for fertilization', 4, 1),
+    ('Clean the kitchen', 'Clean the entire kitchen', 5, 2),
+    ('Wash the windows', 'Wash the windows in the living room and kitchen', 1, 2),
+    ('Read a book', 'Read a new book', 2, 2),
+    ('Cook dinner', 'Prepare dinner for the whole family', 3, 2),
+    ('Wash the car', 'Thoroughly wash the car', 4, 3),
+    ('Refuel', 'Refuel the car at the station', 5, 3),
+    ('Fix the tire', 'Fix the punctured tire', 1, 3),
+    ('Change oil', 'Change the oil in the engine', 2, 3),
+    ('Do the grocery shopping', 'Do the grocery shopping', 3, 4),
+    ('Buy vegetables', 'Buy fresh vegetables for dinner', 4, 4),
+    ('Purchase fruits', 'Purchase fresh fruits for breakfast', 5, 4),
+    ('Get bread', 'Get some bread from the bakery', 1, 4),
+    ('Plan the home project', 'Plan the next home improvement project', 2, 5),
+    ('Buy materials', 'Buy necessary materials for the project', 3, 5),
+    ('Contact contractor', 'Contact a contractor for further details', 4, 5),
+    ('Start renovation', 'Start the renovation process', 5, 5);

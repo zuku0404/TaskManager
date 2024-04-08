@@ -29,9 +29,9 @@ val appModule = module {
     single { BoardRepository() } bind IBoardRepository::class
     single { TaskRepository() } bind ITaskRepository::class
 
-    single { AccountManager() } bind IAccountManager::class
-    single { BoardManager() } bind IBoardManager::class
-    single { TaskManager() } bind ITaskManager::class
+    single { AccountManager(get(), get(), get()) } bind IAccountManager::class
+    single { BoardManager(get()) } bind IBoardManager::class
+    single { TaskManager(get(), get(), get()) } bind ITaskManager::class
     single { CezarEncrypt() } bind IEncryptionService::class
     single { ConsoleApplication() } bind IGui::class
     single { GsonSerializer() } bind ISerializer::class

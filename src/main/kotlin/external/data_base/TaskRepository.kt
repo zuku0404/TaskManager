@@ -105,7 +105,7 @@ class TaskRepository : ITaskRepository, KoinComponent {
     }
 
     override fun findTasksForUser(user: User?): List<Task> {
-        val sql = "SELECT task_id, title, description, user_id, board_id FROM tasks WHERE user_id = ?"
+        val sql = "SELECT task_id, title, description, user_id, board_id FROM tasks WHERE user_id = ? OR user_id IS NULL"
         Connection.getConnection().use {
             val prepareStatement = it.prepareStatement(sql)
             user?.let { prepareStatement.setLong(1, user.id) } ?:

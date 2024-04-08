@@ -6,9 +6,7 @@ import domain.gui.IGui
 import domain.manager.IAccountManager
 import domain.manager.IBoardManager
 import domain.manager.ITaskManager
-import model.Board
 import model.Task
-import model.User
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.koin.core.parameter.parametersOf
@@ -101,6 +99,11 @@ class ConsoleApplication : IGui, KoinComponent {
 
     private fun handleMainMenuSelection() {
         var option by Delegates.notNull<Int>()
+        var boardIndex by Delegates.notNull<Int>()
+        var userIndex by Delegates.notNull<Int>()
+        var taskIndex by Delegates.notNull<Int>()
+        var interrupted = false
+
         while (readln().toIntOrNull()?.let { option = it } == null && option !in 1..6) {
             logger.log("not correct input try again")
         }
@@ -119,38 +122,65 @@ class ConsoleApplication : IGui, KoinComponent {
             }
 
             2 -> {
-                boardManager.getAllBoards().forEach { logger.log("${it.id}) ${it.name}") }
+                boardManager.getAllBoards().forEachIndexed { index, board ->  logger.log("${index + 1}| ${board.name}") }
             }
 
             3 -> {
-                boardManager.getAllBoards().forEach { logger.log("${it.id}) ${it.name}") }
-                logger.log("Write id of board which you want to see tasks")
-                lateinit var board: Board
-                while (readln().toIntOrNull()
-                        ?.let { boardManager.getBoard(it.toLong())?.let { b -> board = b } } == null
-                ) {
-                    logger.log("not correct data try again")
+                val boards = boardManager.getAllBoards()
+                boards.forEachIndexed { index, board ->  logger.log("${index + 1}| ${board.name}") }
+                logger.log("Write number of board which you want to see tasks")
+                while (readln().toIntOrNull()?.let { if (it in 1..boards.size) {boardIndex = it - 1 } else null } == null) {
+                    logger.log("incorrect data try again")
+                    if (!awaitResponseAndProceed()) {
+                        interrupted = true
+                        break
+                    } else {
+                        logger.log("Write number of board which you want to see tasks")
+                    }
                 }
-                showTasksForList(taskManager.getTasksForBoard(board))
+                if (!interrupted) {
+                    showTasksForList(taskManager.getTasksForBoard(boards[boardIndex]))
+                }
+
             }
 
             4 -> {
-                logger.log("Write id of board which you want to delete remember you delete all task which belong to this board")
-                while (readln().toIntOrNull()?.let { option = it } == null) {
-                    logger.log("not correct data try again")
+                val boards = boardManager.getAllBoards()
+                boards.forEachIndexed { index, board ->  logger.log("${index + 1}| ${board.name}") }
+                logger.log("Write number of board which you want to delete. Remember you delete all task which belong to this board")
+                while (readln().toIntOrNull()?.let { if (it in 1..boards.size) {boardIndex = it - 1 } else null } == null) {
+                    logger.log("incorrect data try again")
+                    if (!awaitResponseAndProceed()) {
+                        interrupted = true
+                        break
+                    } else {
+                        logger.log("Write number of board which you want to delete. Remember you delete all task which belong to this board")
+                    }
                 }
-                val result = boardManager.deleteBoard(option.toLong())
-                logger.log("${result.status} ${result.msg}")
-
+                if (!interrupted) {
+                    val result = boardManager.deleteBoard(boards[boardIndex].id)
+                    logger.log("${result.status} ${result.msg}")
+                }
             }
 
             5 ->  {
-                logger.log("Write id of user which you want to see tasks 0 -> to unknown")
-                var user: User? = null
-                while (readln().toIntOrNull()?.let { user = accountManager.getUser(it.toLong()) } == null) {
-                    logger.log("not correct data try again")
+                logger.log("Write id of user which you want to see tasks")
+                val users = accountManager.getAllUsers()
+                logger.log("0| UNKNOWN USER")
+                users.forEachIndexed { index, user ->  logger.log("${index + 1}| ${user.name}") }
+                while (readln().toIntOrNull()?.let { if (it in 0..users.size) {userIndex = it - 1 } else null } == null) {
+                    logger.log("incorrect data try again")
+                    if (!awaitResponseAndProceed()) {
+                        interrupted = true
+                        break
+                    } else {
+                        logger.log("Write id of user which you want to see tasks")
+                    }
                 }
-                showTasksForList(taskManager.getTasksForUser(user))
+                if (!interrupted) {
+                    val user = if (userIndex < 0) null else users[userIndex]
+                    showTasksForList(taskManager.getTasksForUser(user))
+                }
             }
 
             6 -> {
@@ -159,71 +189,128 @@ class ConsoleApplication : IGui, KoinComponent {
 
             7 -> {
                 logger.log("USERS")
-                accountManager.getAllUsers().forEach{logger.log("id: ${it.id} first name: ${it.name} last name: ${it.lastName}")}
+                val users = accountManager.getAllUsers()
+                logger.log("0| UNKNOWN USER")
+                users.forEachIndexed { index, user ->  logger.log("${index + 1}| first name: ${user.name} last name: ${user.lastName}") }
+
                 logger.log("BOARDS")
-                boardManager.getAllBoards().forEach { logger.log("${it.id}) ${it.name}")}
+                val boards = boardManager.getAllBoards()
+                boards.forEachIndexed { index, board ->  logger.log("${index + 1}| ${board.name}") }
+
                 logger.log("title: ")
                 val title = readln()
                 logger.log("description: ")
                 val description = readln()
-                logger.log("to which user do you want assign task write id: ")
-                var userId by Delegates.notNull<Int>()
-                while (readln().toIntOrNull()?.let { userId = it } == null) {
-                    logger.log("incorrect try again")
+
+                logger.log("to which user do you want assign task write number: ")
+                while (readln().toIntOrNull()?.let { if (it in 0..users.size) {userIndex = it - 1 } else null } == null) {
+                    logger.log("incorrect data try again")
+                    if (!awaitResponseAndProceed()) {
+                        interrupted = true
+                        break
+                    } else {
+                        logger.log("to which user do you want assign task write number: ")
+                    }
                 }
 
-                logger.log("to which board do you want assign task write id: ")
-                lateinit var board: Board
-                while (readln().toIntOrNull()
-                        ?.let { boardManager.getBoard(it.toLong())?.let { b -> board = b } } == null
-                ) {
-                    logger.log("not correct data try again")
+                if (!interrupted) {
+                    val user = if (userIndex < 0) null else users[userIndex]
+                    logger.log("to which board do you want assign task write number: ")
+                    while (readln().toIntOrNull()?.let { if (it in 1..boards.size) {boardIndex = it - 1 } else null } == null) {
+                        logger.log("incorrect data try again")
+                        if (!awaitResponseAndProceed()) {
+                            interrupted = true
+                            break
+                        } else {
+                            logger.log("to which board do you want assign task write number: ")
+                        }
+                    }
+                    if (!interrupted) {
+                        val result = taskManager.createTask(title, description, boards[boardIndex].id, user?.id)
+                        logger.log("${result.status} ${result.msg}")
+                    }
                 }
-                val result = taskManager.createTask(title, description,board.id, userId.toLong())
-                logger.log("${result.status} ${result.msg}")
             }
 
             8 -> {
-                showTasksForList(taskManager.getAllTasks())
+                val tasks = taskManager.getAllTasks()
+                showTasksForList(tasks)
                 logger.log("Write number of task which you want edit")
-                var taskId by Delegates.notNull<Int>()
-                while (readln().toIntOrNull()?.let { taskId = it } == null) {
-                    logger.log("incorrect try again")
+                while (readln().toIntOrNull()?.let { if (it in 1..tasks.size) taskIndex = it - 1 else null } == null) {
+                    logger.log("incorrect data try again")
+                    if (!awaitResponseAndProceed()) {
+                        interrupted = true
+                        break
+                    } else {
+                        logger.log("Write number of task which you want edit")
+                    }
                 }
-                logger.log("USERS")
-                accountManager.getAllUsers().forEach{logger.log("id: ${it.id} first name: ${it.name} last name: ${it.lastName}")}
-                logger.log("BOARDS")
-                boardManager.getAllBoards().forEach { logger.log("${it.id}) ${it.name}")}
-                logger.log("title: ")
-                val title = readln()
-                logger.log("description: ")
-                val description = readln()
-                logger.log("to which user do you want assign task write id: ")
-                var userId by Delegates.notNull<Int>()
-                while (readln().toIntOrNull()?.let { userId = it } == null) {
-                    logger.log("incorrect try again")
+
+                if (!interrupted) {
+                    logger.log("USERS")
+                    val users = accountManager.getAllUsers()
+                    logger.log("0| UNKNOWN USER")
+                    users.forEachIndexed { index, user -> logger.log("${index + 1}| first name: ${user.name} last name: ${user.lastName}") }
+
+                    logger.log("BOARDS")
+                    val boards = boardManager.getAllBoards()
+                    boards.forEachIndexed { index, board -> logger.log("${index + 1}| ${board.name}") }
+
+                    logger.log("title: ")
+                    val title = readln()
+                    logger.log("description: ")
+                    val description = readln()
+
+                    logger.log("to which user do you want assign task write number: ")
+                    while (readln().toIntOrNull()?.let { if (it in 0..users.size) { userIndex = it - 1 } else null } == null) {
+                        logger.log("incorrect data try again")
+                        if (!awaitResponseAndProceed()) {
+                            interrupted = true
+                            break
+                        } else {
+                            logger.log("to which user do you want assign task write number: ")
+                        }
+                    }
+
+                    if (!interrupted) {
+                        val user = if (userIndex < 0) null else users[userIndex]
+                        logger.log("to which board do you want assign task write number: ")
+                        while (readln().toIntOrNull()?.let { if (it in 1..boards.size) { boardIndex = it - 1 } else null } == null) {
+                            logger.log("incorrect data try again")
+                            if (!awaitResponseAndProceed()) {
+                                interrupted = true
+                                break
+                            } else {
+                                logger.log("to which board do you want assign task write number: ")
+                            }
+                        }
+
+                        if (!interrupted) {
+                            val result = taskManager.editTak(tasks[taskIndex].id, title, description, boards[boardIndex].id, user?.id)
+                            logger.log("${result.status} ${result.msg}")
+                        }
+                    }
                 }
-                logger.log("to which board do you want assign task write id: ")
-                lateinit var board: Board
-                while (readln().toIntOrNull()
-                        ?.let { boardManager.getBoard(it.toLong())?.let { b -> board = b } } == null
-                ) {
-                    logger.log("not correct data try again")
-                }
-                val result = taskManager.editTak(taskId.toLong(), title, description,board.id, userId.toLong())
-                logger.log("${result.status} ${result.msg}")
             }
 
             9 -> {
-                showTasksForList(taskManager.getAllTasks())
+                val tasks = taskManager.getAllTasks()
+                showTasksForList(tasks)
                 logger.log("Write number of task which you want delete")
-                var taskId by Delegates.notNull<Int>()
-                while (readln().toIntOrNull()?.let { taskId = it } == null) {
-                    logger.log("incorrect try again")
+                while (readln().toIntOrNull()?.let { if(it in 1.. tasks.size) taskIndex = it - 1 else null} == null) {
+                    logger.log("incorrect data try again")
+                    if (!awaitResponseAndProceed()) {
+                        interrupted = true
+                        break
+                    } else {
+                        logger.log("Write number of task which you want delete")
+                    }
                 }
-                val result = taskManager.removeTask(taskId.toLong())
-                logger.log("${result.status} ${result.msg}")
 
+                if (!interrupted) {
+                    val result = taskManager.removeTask(tasks[taskIndex].id)
+                    logger.log("${result.status} ${result.msg}")
+                }
             }
 
             10 -> {
@@ -241,15 +328,16 @@ class ConsoleApplication : IGui, KoinComponent {
         lateinit var answer: String
         do {
             logger.log("Do you want try again? (N/Y)")
+            print("answer: ")
             answer = readln().uppercase()
         } while (answer != "Y" && answer != "N")
         return answer == "Y"
     }
 
-    private fun showTasksForList(taskList: List<Task>){
+    private fun showTasksForList(taskList: List<Task>) {
         logger.log(String.format("%-10s%-35s%-75s%-20s%-20s%-20s","ID", "TITLE", "DESCRIPTION", "USER_NAME", "USER_LASTNAME", "BOARD"))
-        taskList.forEach {logger.log(String.format("%-10s%-35s%-75s%-20s%-20s%-20s",
-            it.id, it.title, it.description, it.user?.name ?: "UNKNOWN", it.user?.lastName ?: "UNKNOWN", it.board.name))
+        taskList.forEachIndexed { index, task -> logger.log(String.format("%-10s%-35s%-75s%-20s%-20s%-20s",
+            index + 1, task.title, task.description, task.user?.name ?: "UNKNOWN", task.user?.lastName ?: "UNKNOWN", task.board.name))
         }
     }
 }

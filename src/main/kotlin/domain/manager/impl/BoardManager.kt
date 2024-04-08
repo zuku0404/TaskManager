@@ -1,30 +1,64 @@
 package domain.manager.impl
 
+import model.ActionResultDescription
 import model.ActionResult
 import model.Status
 import domain.validator.Validator
 import domain.data_base.IBoardRepository
 import domain.manager.IBoardManager
 import model.Board
+import model.CurrentLoggedUser
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 
-class BoardManager: IBoardManager, KoinComponent {
-    private val boardRepository: IBoardRepository by inject()
+class BoardManager(private val boardRepository: IBoardRepository): IBoardManager, KoinComponent {
 
     override fun createBoard(name: String): ActionResult {
-        val trimmedName = name.trim()
-        val resultOfValidation = Validator.boardValidator(trimmedName)
-        if (resultOfValidation.isEmpty()) {
-            boardRepository.findBoardByName(trimmedName)?.let {
-                return ActionResult(Status.INVALID, "name exist")
-            } ?: run{
-                boardRepository.createBoard(trimmedName)
-                return ActionResult(Status.SUCCESS)
+        return CurrentLoggedUser.getInstance().getUser()?.let {
+            val trimmedName = name.trim()
+            val resultOfValidation = Validator.boardValidator(trimmedName)
+            if (resultOfValidation.isEmpty()) {
+                boardRepository.findBoardByName(trimmedName)?.let {
+                    ActionResult(Status.INVALID, ActionResultDescription.BOARD_NAME_EXIST.description)
+                } ?: run {
+                    if (boardRepository.createBoard(trimmedName)) {
+                        ActionResult(Status.SUCCESS, ActionResultDescription.SUCCESS.description)
+                    } else {
+                        ActionResult(Status.INVALID, ActionResultDescription.FAIL_SAVE_CHANGES_DB.description)
+                    }
+                }
+            } else {
+                ActionResult(Status.INVALID, resultOfValidation)
             }
-        } else {
-         return ActionResult(Status.INVALID,resultOfValidation)
-        }
+        } ?: ActionResult(Status.INVALID, ActionResultDescription.NO_USER_LOGGED_IN.description)
+    }
+
+    override fun editBoard(oldName: String, newName: String): ActionResult {
+        return CurrentLoggedUser.getInstance().getUser()?.let {
+            val resultOfValidation = Validator.boardValidator(newName)
+            if (resultOfValidation.isEmpty()) {
+                boardRepository.findBoardByName(oldName)?.let {
+                    if (boardRepository.editBoard(Board(it.id, newName))) {
+                        ActionResult(Status.SUCCESS, ActionResultDescription.SUCCESS.description)
+                    } else {
+                        ActionResult(Status.INVALID, ActionResultDescription.FAIL_SAVE_CHANGES_DB.description)
+                    }
+                } ?: ActionResult(Status.INVALID, ActionResultDescription.BOARD_NOT_EXIST.description)
+            } else {
+                ActionResult(Status.INVALID, resultOfValidation)
+            }
+        } ?: ActionResult(Status.INVALID, ActionResultDescription.NO_USER_LOGGED_IN.description)
+    }
+
+    override fun deleteBoard(id: Long): ActionResult {
+        return CurrentLoggedUser.getInstance().getUser()?.let {
+            boardRepository.findBoardById(id)?.let {
+                if (boardRepository.deleteBoardById(id)) {
+                    ActionResult(Status.SUCCESS, ActionResultDescription.SUCCESS.description)
+                } else {
+                    ActionResult(Status.INVALID, ActionResultDescription.FAIL_SAVE_CHANGES_DB.description)
+                }
+            } ?: ActionResult(Status.INVALID, ActionResultDescription.BOARD_NOT_EXIST.description)
+        } ?: ActionResult(Status.INVALID, ActionResultDescription.NO_USER_LOGGED_IN.description)
     }
 
     override fun getBoard(id: Long): Board? {
@@ -33,25 +67,5 @@ class BoardManager: IBoardManager, KoinComponent {
 
     override fun getAllBoards(): List<Board> {
         return boardRepository.findAllBoards()
-    }
-
-    override fun editBoard(oldName: String, newName: String): ActionResult {
-        val resultOfValidation = Validator.boardValidator(newName)
-        if (resultOfValidation.isEmpty()) {
-            boardRepository.findBoardByName(oldName)?.let {
-                boardRepository.editBoard(Board(it.id, newName))
-                return ActionResult(Status.INVALID, "board not exist")
-            } ?: return ActionResult(Status.SUCCESS)
-        } else {
-            return ActionResult(Status.INVALID, resultOfValidation)
-        }
-    }
-
-    override fun deleteBoard(id: Long): ActionResult {
-        val board = boardRepository.findBoardById(id)
-        return if (board != null) {
-            boardRepository.deleteBoardById(id)
-            ActionResult(Status.SUCCESS)
-        } else ActionResult(Status.INVALID, "board not exist")
     }
 }

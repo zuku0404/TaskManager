@@ -13,7 +13,7 @@ class CurrentLoggedUser private constructor(){
         }
     }
 
-    fun setUser(user: User?) {
+    fun setUser(user: User? = null) {
         this.user = user
     }
 
