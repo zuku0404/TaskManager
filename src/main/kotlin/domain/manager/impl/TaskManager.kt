@@ -57,7 +57,7 @@ class TaskManager(
                 } else {
                     ActionResult(Status.INVALID, ActionResultDescription.FAIL_SAVE_CHANGES_DB.description)
                 }
-            } ?: ActionResult(Status.INVALID, "task not exist")
+            } ?: ActionResult(Status.INVALID, ActionResultDescription.TASK_NOT_EXIST.description)
         } ?: ActionResult(Status.INVALID, ActionResultDescription.NO_USER_LOGGED_IN.description)
     }
 
